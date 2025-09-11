@@ -73,5 +73,16 @@ KissICP::Vector3dVectorTuple KissICP::Voxelize(const std::vector<Eigen::Vector3d
     const auto source = kiss_icp::VoxelDownsample(frame_downsample, voxel_size * 1.5);
     return {source, frame_downsample};
 }
+void KissICP::Reset() {
+    last_pose_ = Sophus::SE3d();
+    last_delta_ = Sophus::SE3d();
+
+    // Clear the local map
+    local_map_.Clear();
+
+    // Reset adaptive threshold (it will start fresh)
+    adaptive_threshold_ =
+        AdaptiveThreshold(config_.initial_threshold, config_.min_motion_th, config_.max_range);
+}
 
 }  // namespace kiss_icp::pipeline

@@ -82,6 +82,7 @@ public:
 
     const Sophus::SE3d &delta() const { return last_delta_; }
     Sophus::SE3d &delta() { return last_delta_; }
+    void Reset();
 
 private:
     Sophus::SE3d last_pose_;

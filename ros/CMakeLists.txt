@@ -47,6 +47,7 @@ find_package(rcutils REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(std_srvs REQUIRED)
 
 # ROS 2 node
 add_library(odometry_component SHARED src/OdometryServer.cpp)
@@ -62,6 +63,7 @@ ament_target_dependencies(
   rcutils
   sensor_msgs
   std_msgs
+  std_srvs
   tf2_ros)
 
 rclcpp_components_register_node(odometry_component PLUGIN "kiss_icp_ros::OdometryServer" EXECUTABLE kiss_icp_node)

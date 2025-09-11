@@ -34,6 +34,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/header.hpp>
+#include <std_srvs/srv/empty.hpp>
 #include <string>
 
 namespace kiss_icp_ros {
@@ -59,6 +60,8 @@ private:
     void PublishClouds(const std::vector<Eigen::Vector3d> &frame,
                        const std::vector<Eigen::Vector3d> &keypoints,
                        const std_msgs::msg::Header &header);
+    void ResetService(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+                      std::shared_ptr<std_srvs::srv::Empty::Response> response);
 
 private:
     /// Tools for broadcasting TFs.
@@ -77,6 +80,9 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr frame_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr kpoints_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr map_publisher_;
+
+    /// Service servers.
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_service_;
 
     /// KISS-ICP
     std::unique_ptr<kiss_icp::pipeline::KissICP> kiss_icp_;
