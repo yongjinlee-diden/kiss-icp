@@ -41,11 +41,13 @@ class Preprocessor:
             max_range, min_range, deskew, max_num_threads
         )
 
-    def preprocess(self, frame: np.ndarray, timestamps: np.ndarray, relative_motion: np.ndarray):
+    def preprocess(self, frame: np.ndarray, relative_motion: np.ndarray):
+        if frame.shape[1] != 4:
+            raise ValueError(f"Expected frame with 4 columns (x,y,z,time), got {frame.shape[1]}")
+
         return np.asarray(
             self._preprocessor._preprocess(
-                kiss_icp_pybind._Vector3dVector(frame),
-                timestamps.ravel(),
+                kiss_icp_pybind._Vector4dVector(frame),
                 relative_motion,
             )
         )

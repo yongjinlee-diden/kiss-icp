@@ -42,13 +42,13 @@
 namespace py = pybind11;
 using namespace py::literals;
 
-PYBIND11_MAKE_OPAQUE(std::vector<Eigen::Vector3d>);
+PYBIND11_MAKE_OPAQUE(std::vector<Eigen::Vector4d>);
 
 namespace kiss_icp {
 PYBIND11_MODULE(kiss_icp_pybind, m) {
-    auto vector3dvector = pybind_eigen_vector_of_vector<Eigen::Vector3d>(
-        m, "_Vector3dVector", "std::vector<Eigen::Vector3d>",
-        py::py_array_to_vectors_double<Eigen::Vector3d>);
+    auto vector4dvector = pybind_eigen_vector_of_vector<Eigen::Vector4d>(
+        m, "_Vector4dVector", "std::vector<Eigen::Vector4d>",
+        py::py_array_to_vectors_double<Eigen::Vector4d>);
 
     // Map representation
     py::class_<VoxelHashMap> internal_map(m, "_VoxelHashMap", "Don't use this");
@@ -58,12 +58,12 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
         .def("_clear", &VoxelHashMap::Clear)
         .def("_empty", &VoxelHashMap::Empty)
         .def("_update",
-             py::overload_cast<const std::vector<Eigen::Vector3d> &, const Eigen::Vector3d &>(
+             py::overload_cast<const std::vector<Eigen::Vector4d> &, const Eigen::Vector3d &>(
                  &VoxelHashMap::Update),
              "points"_a, "origin"_a)
         .def(
             "_update",
-            [](VoxelHashMap &self, const std::vector<Eigen::Vector3d> &points,
+            [](VoxelHashMap &self, const std::vector<Eigen::Vector4d> &points,
                const Eigen::Matrix4d &T) {
                 Sophus::SE3d pose(T);
                 self.Update(points, pose);
@@ -79,12 +79,12 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
              "max_num_threads"_a)
         .def(
             "_preprocess",
-            [](Preprocessor &self, const std::vector<Eigen::Vector3d> &points,
-               const std::vector<double> &timestamps, const Eigen::Matrix4d &relative_motion) {
+            [](Preprocessor &self, const std::vector<Eigen::Vector4d> &points,
+               const Eigen::Matrix4d &relative_motion) {
                 Sophus::SE3d motion(relative_motion);
-                return self.Preprocess(points, timestamps, motion);
+                return self.Preprocess(points, motion);
             },
-            "points"_a, "timestamps"_a, "relative_motion"_a);
+            "points"_a, "relative_motion"_a);
 
     // Point Cloud registration
     py::class_<Registration> internal_registration(m, "_Registration", "Don't use this");
@@ -93,7 +93,7 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
              "max_num_threads"_a)
         .def(
             "_align_points_to_map",
-            [](Registration &self, const std::vector<Eigen::Vector3d> &points,
+            [](Registration &self, const std::vector<Eigen::Vector4d> &points,
                const VoxelHashMap &voxel_map, const Eigen::Matrix4d &T_guess,
                double max_correspondence_distance, double kernel) {
                 Sophus::SE3d initial_guess(T_guess);
@@ -121,21 +121,6 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
 
     // prerpocessing modules
     m.def("_voxel_down_sample", &VoxelDownsample, "frame"_a, "voxel_size"_a);
-    /// This function only applies for the KITTI dataset, and should NOT be used by any other
-    /// dataset, the original idea and part of the implementation is taking from CT-ICP(Although
-    /// IMLS-SLAM Originally introduced the calibration factor)
-    m.def(
-        "_correct_kitti_scan",
-        [](const std::vector<Eigen::Vector3d> &frame) {
-            constexpr double VERTICAL_ANGLE_OFFSET = (0.205 * M_PI) / 180.0;
-            std::vector<Eigen::Vector3d> frame_ = frame;
-            std::transform(frame_.cbegin(), frame_.cend(), frame_.begin(), [&](const auto pt) {
-                const Eigen::Vector3d rotationVector = pt.cross(Eigen::Vector3d(0., 0., 1.));
-                return Eigen::AngleAxisd(VERTICAL_ANGLE_OFFSET, rotationVector.normalized()) * pt;
-            });
-            return frame_;
-        },
-        "frame"_a);
 
     // Metrics
     m.def("_kitti_seq_error", &metrics::SeqError, "gt_poses"_a, "results_poses"_a);

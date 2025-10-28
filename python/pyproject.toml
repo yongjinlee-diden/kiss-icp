@@ -3,7 +3,7 @@ requires = ["scikit_build_core", "pybind11"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "kiss-icp"
+name = "custom-kiss-icp"
 version = "1.2.3"
 description = "Simple yet effective 3D LiDAR-Odometry registration pipeline"
 readme = "README.md"
@@ -65,7 +65,7 @@ visualizer = [
 ]
 
 [project.scripts]
-kiss_icp_pipeline = "kiss_icp.tools.cmd:run"
+custom_kiss_icp_pipeline = "kiss_icp.tools.cmd:run"
 kiss_icp_dump_config = "kiss_icp.config.parser:write_config"
 
 [project.urls]
