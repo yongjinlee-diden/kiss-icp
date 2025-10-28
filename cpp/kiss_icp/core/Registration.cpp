@@ -52,15 +52,20 @@ using LinearSystem = std::pair<Eigen::Matrix6d, Eigen::Vector6d>;
 namespace {
 inline double square(double x) { return x * x; }
 
-void TransformPoints(const Sophus::SE3d &T, std::vector<Eigen::Vector3d> &points) {
+void TransformPoints(const Sophus::SE3d &T, std::vector<Eigen::Vector4d> &points) {
     std::transform(points.cbegin(), points.cend(), points.begin(),
-                   [&](const auto &point) { return T * point; });
+                   [&](const auto &point) {
+                       Eigen::Vector4d transformed;
+                       transformed.template head<3>() = T * point.template head<3>();
+                       transformed.w() = point.w();
+                       return transformed;
+                   });
 }
 
-Correspondences DataAssociation(const std::vector<Eigen::Vector3d> &points,
+Correspondences DataAssociation(const std::vector<Eigen::Vector4d> &points,
                                 const kiss_icp::VoxelHashMap &voxel_map,
                                 const double max_correspondance_distance) {
-    using points_iterator = std::vector<Eigen::Vector3d>::const_iterator;
+    using points_iterator = std::vector<Eigen::Vector4d>::const_iterator;
     Correspondences correspondences;
     correspondences.reserve(points.size());
     tbb::parallel_for(
@@ -70,7 +75,10 @@ Correspondences DataAssociation(const std::vector<Eigen::Vector3d> &points,
             std::for_each(r.begin(), r.end(), [&](const auto &point) {
                 const auto &[closest_neighbor, distance] = voxel_map.GetClosestNeighbor(point);
                 if (distance < max_correspondance_distance) {
-                    correspondences.emplace_back(point, closest_neighbor);
+                    // Only use x,y,z for correspondence
+                    Eigen::Vector3d point_3d = point.template head<3>();
+                    Eigen::Vector3d neighbor_3d = closest_neighbor.template head<3>();
+                    correspondences.emplace_back(point_3d, neighbor_3d);
                 }
             });
         });
@@ -135,7 +143,7 @@ Registration::Registration(int max_num_iteration, double convergence_criterion, 
         tbb::global_control::max_allowed_parallelism, static_cast<size_t>(max_num_threads_));
 }
 
-Sophus::SE3d Registration::AlignPointsToMap(const std::vector<Eigen::Vector3d> &frame,
+Sophus::SE3d Registration::AlignPointsToMap(const std::vector<Eigen::Vector4d> &frame,
                                             const VoxelHashMap &voxel_map,
                                             const Sophus::SE3d &initial_guess,
                                             const double max_distance,
@@ -143,7 +151,7 @@ Sophus::SE3d Registration::AlignPointsToMap(const std::vector<Eigen::Vector3d> &
     if (voxel_map.Empty()) return initial_guess;
 
     // Equation (9)
-    std::vector<Eigen::Vector3d> source = frame;
+    std::vector<Eigen::Vector4d> source = frame;
     TransformPoints(initial_guess, source);
 
     // ICP-loop

@@ -52,21 +52,22 @@ Preprocessor::Preprocessor(const double max_range,
         tbb::global_control::max_allowed_parallelism, static_cast<size_t>(max_num_threads_));
 }
 
-std::vector<Eigen::Vector3d> Preprocessor::Preprocess(const std::vector<Eigen::Vector3d> &frame,
-                                                      const std::vector<double> &timestamps,
+std::vector<Eigen::Vector4d> Preprocessor::Preprocess(const std::vector<Eigen::Vector4d> &frame,
                                                       const Sophus::SE3d &relative_motion) const {
-    const std::vector<Eigen::Vector3d> &deskewed_frame = [&]() {
-        if (!deskew_ || timestamps.empty()) {
+    const std::vector<Eigen::Vector4d> &deskewed_frame = [&]() -> std::vector<Eigen::Vector4d> {
+        if (!deskew_) {
             return frame;
         } else {
-            const auto &[min, max] = std::minmax_element(timestamps.cbegin(), timestamps.cend());
-            const double min_time = *min;
-            const double max_time = *max;
+            const auto [min_it, max_it] = std::minmax_element(
+                frame.cbegin(), frame.cend(),
+                [](const auto &a, const auto &b) { return a.w() < b.w(); });
+            const double min_time = min_it->w();
+            const double max_time = max_it->w();
             const auto normalize = [&](const double t) {
                 return (t - min_time) / (max_time - min_time);
             };
             const auto &omega = relative_motion.log();
-            std::vector<Eigen::Vector3d> deskewed_frame(frame.size());
+            std::vector<Eigen::Vector4d> deskewed_frame(frame.size());
             tbb::parallel_for(
                 // Index Range
                 tbb::blocked_range<size_t>{0, deskewed_frame.size()},
@@ -74,18 +75,19 @@ std::vector<Eigen::Vector3d> Preprocessor::Preprocess(const std::vector<Eigen::V
                 [&](const tbb::blocked_range<size_t> &r) {
                     for (size_t idx = r.begin(); idx < r.end(); ++idx) {
                         const auto &point = frame.at(idx);
-                        const auto &stamp = normalize(timestamps.at(idx));
+                        const auto &stamp = normalize(point.w());
                         const auto pose = Sophus::SE3d::exp((stamp - 1.0) * omega);
-                        deskewed_frame.at(idx) = pose * point;
+                        deskewed_frame.at(idx).template head<3>() = pose * point.template head<3>();
+                        deskewed_frame.at(idx).w() = point.w();
                     };
                 });
             return deskewed_frame;
         }
     }();
-    std::vector<Eigen::Vector3d> preprocessed_frame;
+    std::vector<Eigen::Vector4d> preprocessed_frame;
     preprocessed_frame.reserve(deskewed_frame.size());
     std::for_each(deskewed_frame.cbegin(), deskewed_frame.cend(), [&](const auto &point) {
-        const double point_range = point.norm();
+        const double point_range = point.template head<3>().norm();
         if (point_range < max_range_ && point_range > min_range_) {
             preprocessed_frame.emplace_back(point);
         }
