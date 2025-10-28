@@ -22,7 +22,7 @@
 # SOFTWARE.
 import numpy as np
 
-from kiss_icp.pybind import kiss_icp_pybind
+from custom_kiss_icp.pybind import kiss_icp_pybind
 
 
 def voxel_down_sample(points: np.ndarray, voxel_size: float):

@@ -22,37 +22,32 @@
 # SOFTWARE.
 import numpy as np
 
-from kiss_icp.config import KISSConfig
-from kiss_icp.pybind import kiss_icp_pybind
+from custom_kiss_icp.config import KISSConfig
+from custom_kiss_icp.pybind import kiss_icp_pybind
 
 
-def get_threshold_estimator(config: KISSConfig):
-    if config.adaptive_threshold.fixed_threshold is not None:
-        return FixedThreshold(config.adaptive_threshold.fixed_threshold)
-    return AdaptiveThreshold(config)
+def get_preprocessor(config: KISSConfig):
+    return Preprocessor(
+        max_range=config.data.max_range,
+        min_range=config.data.min_range,
+        deskew=config.data.deskew,
+        max_num_threads=config.registration.max_num_threads,
+    )
 
 
-class FixedThreshold:
-    def __init__(self, fixed_threshold: float):
-        self.fixed_threshold = fixed_threshold
-
-    def get_threshold(self):
-        return self.fixed_threshold
-
-    def update_model_deviation(self, model_deviation):
-        pass
-
-
-class AdaptiveThreshold:
-    def __init__(self, config: KISSConfig):
-        self._estimator = kiss_icp_pybind._AdaptiveThreshold(
-            initial_threshold=config.adaptive_threshold.initial_threshold,
-            min_motion_th=config.adaptive_threshold.min_motion_th,
-            max_range=config.data.max_range,
+class Preprocessor:
+    def __init__(self, max_range, min_range, deskew, max_num_threads):
+        self._preprocessor = kiss_icp_pybind._Preprocessor(
+            max_range, min_range, deskew, max_num_threads
         )
 
-    def get_threshold(self):
-        return self._estimator._compute_threshold()
+    def preprocess(self, frame: np.ndarray, relative_motion: np.ndarray):
+        if frame.shape[1] != 4:
+            raise ValueError(f"Expected frame with 4 columns (x,y,z,time), got {frame.shape[1]}")
 
-    def update_model_deviation(self, model_deviation: np.ndarray):
-        self._estimator._update_model_deviation(model_deviation=model_deviation)
+        return np.asarray(
+            self._preprocessor._preprocess(
+                kiss_icp_pybind._Vector4dVector(frame),
+                relative_motion,
+            )
+        )

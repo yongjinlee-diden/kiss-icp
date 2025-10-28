@@ -65,8 +65,8 @@ visualizer = [
 ]
 
 [project.scripts]
-custom_kiss_icp_pipeline = "kiss_icp.tools.cmd:run"
-kiss_icp_dump_config = "kiss_icp.config.parser:write_config"
+custom_kiss_icp_pipeline = "custom_kiss_icp.tools.cmd:run"
+kiss_icp_dump_config = "custom_kiss_icp.config.parser:write_config"
 
 [project.urls]
 Homepage = "https://github.com/PRBonn/kiss-icp"
@@ -79,7 +79,7 @@ editable.mode = "redirect"
 editable.rebuild = true
 editable.verbose = true
 sdist.exclude = ["pybind/"]
-wheel.install-dir = "kiss_icp/pybind/"
+wheel.install-dir = "custom_kiss_icp/pybind/"
 
 [tool.black]
 line-length = 100

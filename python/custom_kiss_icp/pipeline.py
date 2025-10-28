@@ -30,12 +30,12 @@ from typing import Optional
 import numpy as np
 from pyquaternion import Quaternion
 
-from kiss_icp.config import load_config, write_config
-from kiss_icp.kiss_icp import KissICP
-from kiss_icp.metrics import absolute_trajectory_error, sequence_error
-from kiss_icp.tools.pipeline_results import PipelineResults
-from kiss_icp.tools.progress_bar import get_progress_bar
-from kiss_icp.tools.visualizer import Kissualizer, StubVisualizer
+from custom_kiss_icp.config import load_config, write_config
+from custom_kiss_icp.kiss_icp import KissICP
+from custom_kiss_icp.metrics import absolute_trajectory_error, sequence_error
+from custom_kiss_icp.tools.pipeline_results import PipelineResults
+from custom_kiss_icp.tools.progress_bar import get_progress_bar
+from custom_kiss_icp.tools.visualizer import Kissualizer, StubVisualizer
 
 
 class OdometryPipeline:
@@ -97,6 +97,8 @@ class OdometryPipeline:
     def _run_pipeline(self):
         for idx in get_progress_bar(self._first, self._last):
             raw_frame, timestamps = self._dataset[idx]
+            if len(timestamps) == 0:
+                timestamps = np.zeros_like(raw_frame[:, 0])
             raw_frame = np.concatenate((raw_frame, timestamps[:, None]), axis=1)
             start_time = time.perf_counter_ns()
             source, keypoints = self.odometry.register_frame(raw_frame)

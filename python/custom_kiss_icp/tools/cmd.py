@@ -27,7 +27,7 @@ from typing import Optional
 
 import typer
 
-from kiss_icp.datasets import (
+from custom_kiss_icp.datasets import (
     available_dataloaders,
     jumpable_dataloaders,
     sequence_dataloaders,
@@ -63,7 +63,7 @@ def version_callback(value: bool):
     if value:
         try:
             # Check that the python bindings are properly built and can be loaded at runtime
-            from kiss_icp.pybind import kiss_icp_pybind
+            from custom_kiss_icp.pybind import kiss_icp_pybind
         except ImportError as e:
             print(80 * "*")
             print(f"[ERRROR] Python bindings not properly built! Please open a issue on github")
@@ -71,7 +71,7 @@ def version_callback(value: bool):
             print(80 * "*")
             raise typer.Exit(1)
 
-        import kiss_icp
+        import custom_kiss_icp
 
         print(f"KISS-ICP Version: {kiss_icp.__version__}")
         raise typer.Exit(0)
@@ -212,8 +212,8 @@ def kiss_icp_pipeline(
         print(f"[WARNING] '{dataloader}' does not support '--jump', starting from first frame")
         jump = 0
 
-    from kiss_icp.datasets import dataset_factory
-    from kiss_icp.pipeline import OdometryPipeline
+    from custom_kiss_icp.datasets import dataset_factory
+    from custom_kiss_icp.pipeline import OdometryPipeline
 
     OdometryPipeline(
         dataset=dataset_factory(

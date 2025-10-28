@@ -22,8 +22,8 @@
 # SOFTWARE.
 import numpy as np
 
-from kiss_icp.config import KISSConfig
-from kiss_icp.pybind import kiss_icp_pybind
+from custom_kiss_icp.config import KISSConfig
+from custom_kiss_icp.pybind import kiss_icp_pybind
 
 
 def get_voxel_hash_map(config: KISSConfig):

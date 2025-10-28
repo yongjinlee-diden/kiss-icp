@@ -64,7 +64,7 @@ class KITTIRawDataset:
         self.gt_poses = self.imu_pose_to_lidar(self.imu_poses)
 
         # Add correction for KITTI datasets, can be easilty removed if unwanted
-        from kiss_icp.pybind import kiss_icp_pybind
+        from custom_kiss_icp.pybind import kiss_icp_pybind
 
         self.correct_kitti_scan = lambda frame: np.asarray(
             kiss_icp_pybind._correct_kitti_scan(kiss_icp_pybind._Vector3dVector(frame))

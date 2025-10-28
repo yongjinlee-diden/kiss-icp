@@ -20,34 +20,20 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+from typing import Tuple
+
 import numpy as np
 
-from kiss_icp.config import KISSConfig
-from kiss_icp.pybind import kiss_icp_pybind
+from custom_kiss_icp.pybind import kiss_icp_pybind
 
 
-def get_preprocessor(config: KISSConfig):
-    return Preprocessor(
-        max_range=config.data.max_range,
-        min_range=config.data.min_range,
-        deskew=config.data.deskew,
-        max_num_threads=config.registration.max_num_threads,
-    )
+def sequence_error(gt_poses: np.ndarray, results_poses: np.ndarray) -> Tuple[float, float]:
+    """Sptis the sequence error for a given trajectory in camera coordinate frames."""
+    return kiss_icp_pybind._kitti_seq_error(gt_poses, results_poses)
 
 
-class Preprocessor:
-    def __init__(self, max_range, min_range, deskew, max_num_threads):
-        self._preprocessor = kiss_icp_pybind._Preprocessor(
-            max_range, min_range, deskew, max_num_threads
-        )
-
-    def preprocess(self, frame: np.ndarray, relative_motion: np.ndarray):
-        if frame.shape[1] != 4:
-            raise ValueError(f"Expected frame with 4 columns (x,y,z,time), got {frame.shape[1]}")
-
-        return np.asarray(
-            self._preprocessor._preprocess(
-                kiss_icp_pybind._Vector4dVector(frame),
-                relative_motion,
-            )
-        )
+def absolute_trajectory_error(
+    gt_poses: np.ndarray, results_poses: np.ndarray
+) -> Tuple[float, float]:
+    """Sptis the sequence error for a given trajectory in camera coordinate frames."""
+    return kiss_icp_pybind._absolute_trajectory_error(gt_poses, results_poses)

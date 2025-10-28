@@ -27,7 +27,7 @@ from pathlib import Path
 import natsort
 import numpy as np
 
-from kiss_icp.datasets import supported_file_extensions
+from custom_kiss_icp.datasets import supported_file_extensions
 
 
 class GenericDataset:

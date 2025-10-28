@@ -22,12 +22,12 @@
 # SOFTWARE.
 import numpy as np
 
-from kiss_icp.config import KISSConfig
-from kiss_icp.mapping import get_voxel_hash_map
-from kiss_icp.preprocess import get_preprocessor
-from kiss_icp.registration import get_registration
-from kiss_icp.threshold import get_threshold_estimator
-from kiss_icp.voxelization import voxel_down_sample
+from custom_kiss_icp.config import KISSConfig
+from custom_kiss_icp.mapping import get_voxel_hash_map
+from custom_kiss_icp.preprocess import get_preprocessor
+from custom_kiss_icp.registration import get_registration
+from custom_kiss_icp.threshold import get_threshold_estimator
+from custom_kiss_icp.voxelization import voxel_down_sample
 
 
 class KissICP:

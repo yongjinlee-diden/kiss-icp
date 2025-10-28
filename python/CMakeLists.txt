@@ -45,4 +45,4 @@ else()
   FetchContent_MakeAvailable(ext_kiss_icp_core)
 endif()
 
-add_subdirectory(kiss_icp/pybind)
+add_subdirectory(custom_kiss_icp/pybind)

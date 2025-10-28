@@ -30,7 +30,7 @@ from typing import Any, Dict, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from kiss_icp.config.config import (
+from custom_kiss_icp.config.config import (
     AdaptiveThresholdConfig,
     DataConfig,
     MappingConfig,

@@ -41,7 +41,7 @@ class KITTIOdometryDataset:
             self.gt_poses = self.load_poses(self.poses_fn)
 
         # Add correction for KITTI datasets, can be easilty removed if unwanted
-        from kiss_icp.pybind import kiss_icp_pybind
+        from custom_kiss_icp.pybind import kiss_icp_pybind
 
         self.correct_kitti_scan = lambda frame: np.asarray(
             kiss_icp_pybind._correct_kitti_scan(kiss_icp_pybind._Vector3dVector(frame))
