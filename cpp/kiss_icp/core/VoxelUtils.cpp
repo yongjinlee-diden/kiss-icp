@@ -9,7 +9,9 @@ std::vector<Eigen::Vector4d> VoxelDownsample(const std::vector<Eigen::Vector4d> 
     tsl::robin_map<Voxel, Eigen::Vector4d> grid;
     grid.reserve(frame.size());
     std::for_each(frame.cbegin(), frame.cend(), [&](const auto &point) {
-        const auto voxel = PointToVoxel(point, voxel_size);
+        // Extract x, y, z for voxel computation
+        Eigen::Vector3d point_xyz = point.template head<3>();
+        const auto voxel = PointToVoxel(point_xyz, voxel_size);
         if (!grid.contains(voxel)) grid.insert({voxel, point});
     });
     std::vector<Eigen::Vector4d> frame_dowsampled;

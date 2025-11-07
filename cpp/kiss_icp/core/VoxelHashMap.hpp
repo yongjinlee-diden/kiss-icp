@@ -35,24 +35,36 @@
 #include "VoxelUtils.hpp"
 
 namespace kiss_icp {
+
+// Structure to hold point with normal vector: (x, y, z, t, nx, ny, nz)
+// Using Eigen::Matrix<double, 7, 1> for better memory alignment
+using PointWithNormal = Eigen::Matrix<double, 7, 1>;
+
 struct VoxelHashMap {
-    explicit VoxelHashMap(double voxel_size, double max_distance, unsigned int max_points_per_voxel)
+    explicit VoxelHashMap(double voxel_size, double max_distance, unsigned int max_points_per_voxel,
+                         bool use_normals = false)
         : voxel_size_(voxel_size),
           max_distance_(max_distance),
-          max_points_per_voxel_(max_points_per_voxel) {}
+          max_points_per_voxel_(max_points_per_voxel),
+          use_normals_(use_normals) {}
 
     inline void Clear() { map_.clear(); }
     inline bool Empty() const { return map_.empty(); }
-    void Update(const std::vector<Eigen::Vector4d> &points, const Eigen::Vector3d &origin);
-    void Update(const std::vector<Eigen::Vector4d> &points, const Sophus::SE3d &pose);
-    void AddPoints(const std::vector<Eigen::Vector4d> &points);
+
+    // Unified API - always uses PointWithNormal internally
+    void Update(const std::vector<PointWithNormal> &points, const Eigen::Vector3d &origin);
+    void Update(const std::vector<PointWithNormal> &points, const Sophus::SE3d &pose);
+    void AddPoints(const std::vector<PointWithNormal> &points);
     void RemovePointsFarFromLocation(const Eigen::Vector3d &origin);
-    std::vector<Eigen::Vector4d> Pointcloud() const;
-    std::tuple<Eigen::Vector4d, double> GetClosestNeighbor(const Eigen::Vector4d &query) const;
+    std::vector<PointWithNormal> Pointcloud() const;
+    std::tuple<PointWithNormal, double> GetClosestNeighbor(const PointWithNormal &query) const;
 
     double voxel_size_;
     double max_distance_;
     unsigned int max_points_per_voxel_;
-    tsl::robin_map<Voxel, std::vector<Eigen::Vector4d>> map_;
+    bool use_normals_;
+
+    // Single unified storage (always PointWithNormal)
+    tsl::robin_map<Voxel, std::vector<PointWithNormal>> map_;
 };
 }  // namespace kiss_icp

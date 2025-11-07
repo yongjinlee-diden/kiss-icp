@@ -31,9 +31,11 @@
 namespace kiss_icp {
 
 struct Registration {
-    explicit Registration(int max_num_iteration, double convergence_criterion, int max_num_threads);
+    explicit Registration(int max_num_iteration, double convergence_criterion, int max_num_threads,
+                         bool use_normals = false, double normal_consistency_threshold = 0.9848);
 
-    Sophus::SE3d AlignPointsToMap(const std::vector<Eigen::Vector4d> &frame,
+    // Unified API - automatically uses point-to-plane or point-to-point based on use_normals flag
+    Sophus::SE3d AlignPointsToMap(const std::vector<PointWithNormal> &frame,
                                   const VoxelHashMap &voxel_map,
                                   const Sophus::SE3d &initial_guess,
                                   const double max_correspondence_distance,
@@ -42,5 +44,7 @@ struct Registration {
     int max_num_iterations_;
     double convergence_criterion_;
     int max_num_threads_;
+    bool use_normals_;
+    double normal_consistency_threshold_;  // cos(angle) threshold for normal matching (default: cos(10°) ≈ 0.9848)
 };
 }  // namespace kiss_icp

@@ -43,21 +43,24 @@ static const std::array<Voxel, 27> voxel_shifts{
 
 namespace kiss_icp {
 
-std::tuple<Eigen::Vector4d, double> VoxelHashMap::GetClosestNeighbor(
-    const Eigen::Vector4d &query) const {
-    // Convert the point to voxel coordinates
-    const auto &voxel = PointToVoxel(query, voxel_size_);
+std::tuple<PointWithNormal, double> VoxelHashMap::GetClosestNeighbor(
+    const PointWithNormal &query) const {
+    // Convert the point to voxel coordinates (using first 3 components: x, y, z)
+    Eigen::Vector3d query_xyz;
+    query_xyz << query(0), query(1), query(2);
+    const auto &voxel = PointToVoxel(query_xyz, voxel_size_);
     // Find the nearest neighbor
-    Eigen::Vector4d closest_neighbor = Eigen::Vector4d::Zero();
+    PointWithNormal closest_neighbor = PointWithNormal::Zero();
     double closest_distance = std::numeric_limits<double>::max();
     std::for_each(voxel_shifts.cbegin(), voxel_shifts.cend(), [&](const auto &voxel_shift) {
         const auto &query_voxel = voxel + voxel_shift;
         auto search = map_.find(query_voxel);
         if (search != map_.end()) {
             const auto &points = search.value();
-            const Eigen::Vector4d &neighbor = *std::min_element(
+            const PointWithNormal &neighbor = *std::min_element(
                 points.cbegin(), points.cend(), [&](const auto &lhs, const auto &rhs) {
-                    return (lhs.template head<3>() - query.template head<3>()).norm() < (rhs.template head<3>() - query.template head<3>()).norm();
+                    return (lhs.template head<3>() - query.template head<3>()).norm() <
+                           (rhs.template head<3>() - query.template head<3>()).norm();
                 });
             double distance = (neighbor.template head<3>() - query.template head<3>()).norm();
             if (distance < closest_distance) {
@@ -69,8 +72,8 @@ std::tuple<Eigen::Vector4d, double> VoxelHashMap::GetClosestNeighbor(
     return std::make_tuple(closest_neighbor, closest_distance);
 }
 
-std::vector<Eigen::Vector4d> VoxelHashMap::Pointcloud() const {
-    std::vector<Eigen::Vector4d> points;
+std::vector<PointWithNormal> VoxelHashMap::Pointcloud() const {
+    std::vector<PointWithNormal> points;
     points.reserve(map_.size() * static_cast<size_t>(max_points_per_voxel_));
     std::for_each(map_.cbegin(), map_.cend(), [&](const auto &map_element) {
         const auto &voxel_points = map_element.second;
@@ -80,29 +83,40 @@ std::vector<Eigen::Vector4d> VoxelHashMap::Pointcloud() const {
     return points;
 }
 
-void VoxelHashMap::Update(const std::vector<Eigen::Vector4d> &points,
+void VoxelHashMap::Update(const std::vector<PointWithNormal> &points,
                           const Eigen::Vector3d &origin) {
     AddPoints(points);
     RemovePointsFarFromLocation(origin);
 }
 
-void VoxelHashMap::Update(const std::vector<Eigen::Vector4d> &points, const Sophus::SE3d &pose) {
-    std::vector<Eigen::Vector4d> points_transformed(points.size());
+void VoxelHashMap::Update(const std::vector<PointWithNormal> &points, const Sophus::SE3d &pose) {
+    std::vector<PointWithNormal> points_transformed(points.size());
+    const Eigen::Matrix3d &R = pose.rotationMatrix();
+    const Eigen::Vector3d &t = pose.translation();
+
     std::transform(points.cbegin(), points.cend(), points_transformed.begin(),
                    [&](const auto &point) {
-                       // Transform only x,y,z and preserve time component
-                       Eigen::Vector4d transformed;
-                       transformed.template head<3>() = pose * point.template head<3>();
-                       transformed.w() = point.w();  // Preserve time
+                       PointWithNormal transformed;
+                       // Transform position (x, y, z)
+                       transformed.template head<3>() = R * point.template head<3>() + t;
+                       // Preserve time
+                       transformed(3) = point(3);
+                       // Transform normal (nx, ny, nz) - rotation only
+                       transformed.template tail<3>() = R * point.template tail<3>();
                        return transformed;
                    });
+
     const Eigen::Vector3d &origin = pose.translation();
     Update(points_transformed, origin);
 }
 
-void VoxelHashMap::AddPoints(const std::vector<Eigen::Vector4d> &points) {
+void VoxelHashMap::AddPoints(const std::vector<PointWithNormal> &points) {
     std::for_each(points.cbegin(), points.cend(), [&](const auto &point) {
-        const auto voxel = PointToVoxel(point, voxel_size_);
+        // Use only x, y, z for voxel computation
+        Eigen::Vector3d point_xyz;
+        point_xyz << point(0), point(1), point(2);
+        const auto voxel = PointToVoxel(point_xyz, voxel_size_);
+
         auto search = map_.find(voxel);
         if (search != map_.end()) {
             auto &voxel_points = search.value();
@@ -111,7 +125,7 @@ void VoxelHashMap::AddPoints(const std::vector<Eigen::Vector4d> &points) {
             }
             voxel_points.emplace_back(point);
         } else {
-            std::vector<Eigen::Vector4d> voxel_points;
+            std::vector<PointWithNormal> voxel_points;
             voxel_points.reserve(max_points_per_voxel_);
             voxel_points.emplace_back(point);
             map_.insert({voxel, std::move(voxel_points)});
@@ -121,6 +135,7 @@ void VoxelHashMap::AddPoints(const std::vector<Eigen::Vector4d> &points) {
 
 void VoxelHashMap::RemovePointsFarFromLocation(const Eigen::Vector3d &origin) {
     const auto max_distance2 = max_distance_ * max_distance_;
+
     for (auto it = map_.begin(); it != map_.end();) {
         const auto &[voxel, voxel_points] = *it;
         const auto &pt = voxel_points.front();
@@ -131,4 +146,5 @@ void VoxelHashMap::RemovePointsFarFromLocation(const Eigen::Vector3d &origin) {
         }
     }
 }
+
 }  // namespace kiss_icp

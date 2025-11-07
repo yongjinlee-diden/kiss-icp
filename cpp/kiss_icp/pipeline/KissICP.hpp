@@ -51,27 +51,34 @@ struct KISSConfig {
 
     // Motion compensation
     bool deskew = true;
+
+    // Normal vector-based ICP (inspired by nv_liom)
+    bool use_normals = false;
+    double normal_consistency_threshold = 0.9848;  // cos(10°)
 };
 
 class KissICP {
 public:
     using Vector4dVector = std::vector<Eigen::Vector4d>;
     using Vector4dVectorTuple = std::tuple<Vector4dVector, Vector4dVector>;
+    using PointWithNormalVector = std::vector<PointWithNormal>;
+    using PointWithNormalVectorTuple = std::tuple<PointWithNormalVector, PointWithNormalVector>;
 
 public:
     explicit KissICP(const KISSConfig &config)
         : config_(config),
           preprocessor_(config.max_range, config.min_range, config.deskew, config.max_num_threads),
           registration_(
-              config.max_num_iterations, config.convergence_criterion, config.max_num_threads),
-          local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel),
+              config.max_num_iterations, config.convergence_criterion, config.max_num_threads,
+              config.use_normals, config.normal_consistency_threshold),
+          local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel, config.use_normals),
           adaptive_threshold_(config.initial_threshold, config.min_motion_th, config.max_range) {}
 
 public:
-    Vector4dVectorTuple RegisterFrame(const std::vector<Eigen::Vector4d> &frame);
-    Vector4dVectorTuple Voxelize(const std::vector<Eigen::Vector4d> &frame) const;
-
-    std::vector<Eigen::Vector4d> LocalMap() const { return local_map_.Pointcloud(); };
+    // Unified API (automatically handles normals based on use_normals config)
+    PointWithNormalVectorTuple RegisterFrame(const std::vector<PointWithNormal> &frame);
+    PointWithNormalVectorTuple Voxelize(const std::vector<PointWithNormal> &frame) const;
+    std::vector<PointWithNormal> LocalMap() const { return local_map_.Pointcloud(); };
 
     const VoxelHashMap &VoxelMap() const { return local_map_; };
     VoxelHashMap &VoxelMap() { return local_map_; };
@@ -82,6 +89,8 @@ public:
     const Sophus::SE3d &delta() const { return last_delta_; }
     Sophus::SE3d &delta() { return last_delta_; }
     void Reset();
+
+    bool use_normals() const { return config_.use_normals; }
 
 private:
     Sophus::SE3d last_pose_;

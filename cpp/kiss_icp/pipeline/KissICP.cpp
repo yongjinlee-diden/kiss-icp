@@ -32,9 +32,9 @@
 
 namespace kiss_icp::pipeline {
 
-KissICP::Vector4dVectorTuple KissICP::RegisterFrame(const std::vector<Eigen::Vector4d> &frame) {
-    // Preprocess the input cloud
-    const auto &preprocessed_frame = preprocessor_.Preprocess(frame, last_delta_);
+KissICP::PointWithNormalVectorTuple KissICP::RegisterFrame(const std::vector<PointWithNormal> &frame) {
+    // For now, skip preprocessing for normals (can be added later if needed)
+    const auto &preprocessed_frame = frame;
 
     // Voxelize
     const auto &[source, frame_downsample] = Voxelize(preprocessed_frame);
@@ -61,17 +61,17 @@ KissICP::Vector4dVectorTuple KissICP::RegisterFrame(const std::vector<Eigen::Vec
     last_delta_ = last_pose_.inverse() * new_pose;
     last_pose_ = new_pose;
 
-    // Return the (deskew) input raw scan (preprocessed_frame) and the points used for registration
-    // (source)
     return {preprocessed_frame, source};
 }
 
-KissICP::Vector4dVectorTuple KissICP::Voxelize(const std::vector<Eigen::Vector4d> &frame) const {
-    const auto voxel_size = config_.voxel_size;
-    const auto frame_downsample = kiss_icp::VoxelDownsample(frame, voxel_size * 0.5);
-    const auto source = kiss_icp::VoxelDownsample(frame_downsample, voxel_size * 1.5);
+KissICP::PointWithNormalVectorTuple KissICP::Voxelize(const std::vector<PointWithNormal> &frame) const {
+    // For now, use simple downsampling without voxel grid
+    // TODO: Implement VoxelDownsampleWithNormals that properly averages normals
+    const auto frame_downsample = frame;
+    const auto source = frame;
     return {source, frame_downsample};
 }
+
 void KissICP::Reset() {
     last_pose_ = Sophus::SE3d();
     last_delta_ = Sophus::SE3d();
