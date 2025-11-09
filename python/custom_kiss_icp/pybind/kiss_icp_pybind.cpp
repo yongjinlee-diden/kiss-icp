@@ -43,33 +43,66 @@ namespace py = pybind11;
 using namespace py::literals;
 
 PYBIND11_MAKE_OPAQUE(std::vector<Eigen::Vector4d>);
+PYBIND11_MAKE_OPAQUE(std::vector<kiss_icp::PointWithNormal>);
 
 namespace kiss_icp {
+
+// Helper function to convert Vector4d to PointWithNormal (with zero normals)
+inline std::vector<PointWithNormal> ConvertToPointWithNormal(const std::vector<Eigen::Vector4d>& points) {
+    std::vector<PointWithNormal> result;
+    result.reserve(points.size());
+    for (const auto& p : points) {
+        PointWithNormal pwn = PointWithNormal::Zero();
+        pwn.head<4>() = p;  // x, y, z, t
+        // normals (indices 4, 5, 6) remain zero
+        result.push_back(pwn);
+    }
+    return result;
+}
+
 PYBIND11_MODULE(kiss_icp_pybind, m) {
     auto vector4dvector = pybind_eigen_vector_of_vector<Eigen::Vector4d>(
         m, "_Vector4dVector", "std::vector<Eigen::Vector4d>",
         py::py_array_to_vectors_double<Eigen::Vector4d>);
 
+    auto pointwithnormalvector = pybind_eigen_vector_of_vector<PointWithNormal>(
+        m, "_PointWithNormalVector", "std::vector<PointWithNormal>",
+        py::py_array_to_vectors_double<PointWithNormal>);
+
     // Map representation
     py::class_<VoxelHashMap> internal_map(m, "_VoxelHashMap", "Don't use this");
     internal_map
-        .def(py::init<double, double, int>(), "voxel_size"_a, "max_distance"_a,
-             "max_points_per_voxel"_a)
+        .def(py::init<double, double, int, bool>(), "voxel_size"_a, "max_distance"_a,
+             "max_points_per_voxel"_a, "use_normals"_a = false)
         .def("_clear", &VoxelHashMap::Clear)
         .def("_empty", &VoxelHashMap::Empty)
+        // Accept PointWithNormal directly
         .def("_update",
-             py::overload_cast<const std::vector<Eigen::Vector4d> &, const Eigen::Vector3d &>(
+             py::overload_cast<const std::vector<PointWithNormal> &, const Eigen::Vector3d &>(
                  &VoxelHashMap::Update),
              "points"_a, "origin"_a)
         .def(
             "_update",
-            [](VoxelHashMap &self, const std::vector<Eigen::Vector4d> &points,
+            [](VoxelHashMap &self, const std::vector<PointWithNormal> &points,
                const Eigen::Matrix4d &T) {
                 Sophus::SE3d pose(T);
                 self.Update(points, pose);
             },
             "points"_a, "pose"_a)
-        .def("_add_points", &VoxelHashMap::AddPoints, "points"_a)
+        // Accept Vector4d and auto-convert
+        .def(
+            "_update",
+            [](VoxelHashMap &self, const std::vector<Eigen::Vector4d> &points,
+               const Eigen::Matrix4d &T) {
+                Sophus::SE3d pose(T);
+                self.Update(ConvertToPointWithNormal(points), pose);
+            },
+            "points"_a, "pose"_a)
+        .def("_add_points",
+            [](VoxelHashMap &self, const std::vector<Eigen::Vector4d> &points) {
+                self.AddPoints(ConvertToPointWithNormal(points));
+            },
+            "points"_a)
         .def("_remove_far_away_points", &VoxelHashMap::RemovePointsFarFromLocation, "origin"_a)
         .def("_point_cloud", &VoxelHashMap::Pointcloud);
 
@@ -89,8 +122,24 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
     // Point Cloud registration
     py::class_<Registration> internal_registration(m, "_Registration", "Don't use this");
     internal_registration
-        .def(py::init<int, double, int>(), "max_num_iterations"_a, "convergence_criterion"_a,
-             "max_num_threads"_a)
+        .def(py::init<int, double, int, bool, double>(), "max_num_iterations"_a,
+             "convergence_criterion"_a, "max_num_threads"_a, "use_normals"_a = false,
+             "normal_consistency_threshold"_a = 0.9848)
+        // Accept PointWithNormal directly
+        .def(
+            "_align_points_to_map",
+            [](Registration &self, const std::vector<PointWithNormal> &points,
+               const VoxelHashMap &voxel_map, const Eigen::Matrix4d &T_guess,
+               double max_correspondence_distance, double kernel) {
+                Sophus::SE3d initial_guess(T_guess);
+                return self
+                    .AlignPointsToMap(points, voxel_map, initial_guess, max_correspondence_distance,
+                                      kernel)
+                    .matrix();
+            },
+            "points"_a, "voxel_map"_a, "initial_guess"_a, "max_correspondance_distance"_a,
+            "kernel"_a)
+        // Accept Vector4d and auto-convert
         .def(
             "_align_points_to_map",
             [](Registration &self, const std::vector<Eigen::Vector4d> &points,
@@ -98,8 +147,8 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
                double max_correspondence_distance, double kernel) {
                 Sophus::SE3d initial_guess(T_guess);
                 return self
-                    .AlignPointsToMap(points, voxel_map, initial_guess, max_correspondence_distance,
-                                      kernel)
+                    .AlignPointsToMap(ConvertToPointWithNormal(points), voxel_map, initial_guess,
+                                      max_correspondence_distance, kernel)
                     .matrix();
             },
             "points"_a, "voxel_map"_a, "initial_guess"_a, "max_correspondance_distance"_a,
