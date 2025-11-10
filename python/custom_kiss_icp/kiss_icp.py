@@ -41,11 +41,16 @@ class KissICP:
         self.local_map = get_voxel_hash_map(self.config)
 
     def register_frame(self, frame):
-        # Apply motion compensation
-        frame = self.preprocessor.preprocess(frame, self.last_delta)
+        if frame.shape[1] >= 7:
+            # Input already has normals (N, 7): skip preprocessing, just voxelize
+            # Note: Assuming normals are already computed and frame is already deskewed
+            source, frame_downsample = self.voxelize(frame)
+        else:
+            # Apply motion compensation
+            frame = self.preprocessor.preprocess(frame, self.last_delta)
 
-        # Voxelize
-        source, frame_downsample = self.voxelize(frame)
+            # Voxelize
+            source, frame_downsample = self.voxelize(frame)
 
         # Get adaptive_threshold
         sigma = self.adaptive_threshold.get_threshold()

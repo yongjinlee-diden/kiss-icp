@@ -41,11 +41,15 @@ class Registration:
         max_num_iterations: int,
         convergence_criterion: float,
         max_num_threads: int = 0,
+        use_normals: bool = False,
+        normal_consistency_threshold: float = 0.9848,
     ):
         self._registration = kiss_icp_pybind._Registration(
             max_num_iterations=max_num_iterations,
             convergence_criterion=convergence_criterion,
             max_num_threads=max_num_threads,
+            use_normals=use_normals,
+            normal_consistency_threshold=normal_consistency_threshold,
         )
 
     def align_points_to_map(
@@ -56,10 +60,19 @@ class Registration:
         max_correspondance_distance: float,
         kernel: float,
     ) -> np.ndarray:
-        return self._registration._align_points_to_map(
-            points=kiss_icp_pybind._Vector4dVector(points),
-            voxel_map=voxel_map._internal_map,
-            initial_guess=initial_guess,
-            max_correspondance_distance=max_correspondance_distance,
-            kernel=kernel,
-        )
+        if points.shape[1] >= 7:
+            return self._registration._align_points_to_map(
+                points=kiss_icp_pybind._PointWithNormalVector(points),
+                voxel_map=voxel_map._internal_map,
+                initial_guess=initial_guess,
+                max_correspondance_distance=max_correspondance_distance,
+                kernel=kernel,
+            )
+        else:   
+            return self._registration._align_points_to_map(
+                points=kiss_icp_pybind._Vector4dVector(points),
+                voxel_map=voxel_map._internal_map,
+                initial_guess=initial_guess,
+                max_correspondance_distance=max_correspondance_distance,
+                kernel=kernel,
+            )

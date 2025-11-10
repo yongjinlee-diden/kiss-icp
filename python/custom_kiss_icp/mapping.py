@@ -55,7 +55,10 @@ class VoxelHashMap:
 
         TODO(NACHO): Use similar overload API as we did for VDBFusion
         """
-        self._internal_map._update(kiss_icp_pybind._Vector4dVector(points), pose)
+        if points.shape[1] >= 7:
+            self._internal_map._update(kiss_icp_pybind._PointWithNormalVector(points), pose)
+        else:
+            self._internal_map._update(kiss_icp_pybind._Vector4dVector(points), pose)
 
     def add_points(self, points):
         self._internal_map._add_points(kiss_icp_pybind._Vector4dVector(points))
@@ -64,5 +67,8 @@ class VoxelHashMap:
         self._internal_map._remove_far_away_points(origin)
 
     def point_cloud(self) -> np.ndarray:
-        """Return the internal representaion as a np.array (pointcloud)."""
+        """Return the internal representaion as a np.array (pointcloud).
+
+        Returns (N, 7) array with columns [x, y, z, t, nx, ny, nz].
+        """
         return np.asarray(self._internal_map._point_cloud())
