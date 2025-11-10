@@ -42,9 +42,8 @@ class KissICP:
 
     def register_frame(self, frame):
         if frame.shape[1] >= 7:
-            # Input already has normals (N, 7): skip preprocessing, just voxelize
-            # Note: Assuming normals are already computed and frame is already deskewed
-            source, frame_downsample = self.voxelize(frame)
+            # Input has normals (N, 7): skip preprocessing and voxelize
+            source = frame_downsample = frame
         else:
             # Apply motion compensation
             frame = self.preprocessor.preprocess(frame, self.last_delta)

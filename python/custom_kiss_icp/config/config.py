@@ -40,6 +40,8 @@ class RegistrationConfig(BaseModel):
     max_num_iterations: Optional[int] = 500
     convergence_criterion: Optional[float] = 0.0001
     max_num_threads: Optional[int] = 0  # 0 means automatic
+    use_normals: Optional[bool] = False
+    normal_consistency_threshold: Optional[float] = 0.9848
 
 
 class AdaptiveThresholdConfig(BaseModel):

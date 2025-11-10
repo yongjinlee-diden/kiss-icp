@@ -32,6 +32,8 @@ def get_registration(config: KISSConfig):
         max_num_iterations=config.registration.max_num_iterations,
         convergence_criterion=config.registration.convergence_criterion,
         max_num_threads=config.registration.max_num_threads,
+        use_normals=config.registration.use_normals,
+        normal_consistency_threshold=config.registration.normal_consistency_threshold,
     )
 
 
