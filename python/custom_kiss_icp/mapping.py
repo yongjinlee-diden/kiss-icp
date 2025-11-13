@@ -69,6 +69,6 @@ class VoxelHashMap:
     def point_cloud(self) -> np.ndarray:
         """Return the internal representaion as a np.array (pointcloud).
 
-        Returns (N, 7) array with columns [x, y, z, t, nx, ny, nz].
+        Returns array with columns [x, y, z, t, nx, ny, nz, (confidence)].
         """
         return np.asarray(self._internal_map._point_cloud())

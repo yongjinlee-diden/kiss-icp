@@ -34,6 +34,7 @@ def get_registration(config: KISSConfig):
         max_num_threads=config.registration.max_num_threads,
         use_normals=config.registration.use_normals,
         normal_consistency_threshold=config.registration.normal_consistency_threshold,
+        use_confidence_weighting=config.registration.use_confidence_weighting,
     )
 
 
@@ -45,6 +46,7 @@ class Registration:
         max_num_threads: int = 0,
         use_normals: bool = False,
         normal_consistency_threshold: float = 0.9848,
+        use_confidence_weighting: bool = True,
     ):
         self._registration = kiss_icp_pybind._Registration(
             max_num_iterations=max_num_iterations,
@@ -52,6 +54,7 @@ class Registration:
             max_num_threads=max_num_threads,
             use_normals=use_normals,
             normal_consistency_threshold=normal_consistency_threshold,
+            use_confidence_weighting=use_confidence_weighting,
         )
 
     def align_points_to_map(

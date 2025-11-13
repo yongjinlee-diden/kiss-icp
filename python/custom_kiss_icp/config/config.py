@@ -42,6 +42,7 @@ class RegistrationConfig(BaseModel):
     max_num_threads: Optional[int] = 0  # 0 means automatic
     use_normals: Optional[bool] = False
     normal_consistency_threshold: Optional[float] = 0.9848
+    use_confidence_weighting: Optional[bool] = True
 
 
 class AdaptiveThresholdConfig(BaseModel):

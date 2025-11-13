@@ -42,7 +42,7 @@ class KissICP:
 
     def register_frame(self, frame):
         if frame.shape[1] >= 7:
-            # Input has normals (N, 7): skip preprocessing and voxelize
+            # Input has normals: skip preprocessing and voxelize
             source = frame_downsample = frame
         else:
             # Apply motion compensation

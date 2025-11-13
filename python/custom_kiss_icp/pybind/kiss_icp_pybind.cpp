@@ -122,9 +122,9 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
     // Point Cloud registration
     py::class_<Registration> internal_registration(m, "_Registration", "Don't use this");
     internal_registration
-        .def(py::init<int, double, int, bool, double>(), "max_num_iterations"_a,
+        .def(py::init<int, double, int, bool, double, bool>(), "max_num_iterations"_a,
              "convergence_criterion"_a, "max_num_threads"_a, "use_normals"_a = false,
-             "normal_consistency_threshold"_a = 0.9848)
+             "normal_consistency_threshold"_a = 0.9848, "use_confidence_weighting"_a = true)
         // Accept PointWithNormal directly
         .def(
             "_align_points_to_map",
