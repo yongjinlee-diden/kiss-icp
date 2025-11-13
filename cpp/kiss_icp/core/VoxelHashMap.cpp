@@ -102,7 +102,9 @@ void VoxelHashMap::Update(const std::vector<PointWithNormal> &points, const Soph
                        // Preserve time
                        transformed(3) = point(3);
                        // Transform normal (nx, ny, nz) - rotation only
-                       transformed.template tail<3>() = R * point.template tail<3>();
+                       transformed.template segment<3>(4) = R * point.template segment<3>(4);
+                       // Preserve confidence
+                       transformed(7) = point(7);  // confidence
                        return transformed;
                    });
 
@@ -120,10 +122,23 @@ void VoxelHashMap::AddPoints(const std::vector<PointWithNormal> &points) {
         auto search = map_.find(voxel);
         if (search != map_.end()) {
             auto &voxel_points = search.value();
+            double new_confidence = point(7);  // Extract confidence from new point
+
             if (voxel_points.size() >= max_points_per_voxel_) {
-                voxel_points.erase(voxel_points.begin());
+                // Confidence-based quality control: replace lowest confidence point
+                auto min_confidence_it = std::min_element(
+                    voxel_points.begin(), voxel_points.end(),
+                    [](const auto &a, const auto &b) {
+                        return a(7) < b(7);  // Compare confidence values
+                    });
+
+                // Only replace if new point has higher confidence
+                if (new_confidence > (*min_confidence_it)(7)) {
+                    *min_confidence_it = point;
+                }
+            } else {
+                voxel_points.emplace_back(point);
             }
-            voxel_points.emplace_back(point);
         } else {
             std::vector<PointWithNormal> voxel_points;
             voxel_points.reserve(max_points_per_voxel_);

@@ -32,7 +32,8 @@ namespace kiss_icp {
 
 struct Registration {
     explicit Registration(int max_num_iteration, double convergence_criterion, int max_num_threads,
-                         bool use_normals = false, double normal_consistency_threshold = 0.9848);
+                         bool use_normals = false, double normal_consistency_threshold = 0.9848,
+                         bool use_confidence_weighting = true);
 
     // Unified API - automatically uses point-to-plane or point-to-point based on use_normals flag
     Sophus::SE3d AlignPointsToMap(const std::vector<PointWithNormal> &frame,
@@ -46,5 +47,6 @@ struct Registration {
     int max_num_threads_;
     bool use_normals_;
     double normal_consistency_threshold_;  // cos(angle) threshold for normal matching (default: cos(10°) ≈ 0.9848)
+    bool use_confidence_weighting_;        // Enable confidence-based weighting in ICP
 };
 }  // namespace kiss_icp
