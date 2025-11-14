@@ -42,8 +42,8 @@ KissICP::PointWithNormalVectorTuple KissICP::RegisterFrame(const std::vector<Poi
     // Get adaptive_threshold
     const double sigma = adaptive_threshold_.ComputeThreshold();
 
-    // Compute initial_guess for ICP
-    const auto initial_guess = last_pose_ * last_delta_;
+    // Compute initial_guess for ICP (use previous pose directly without constant velocity model)
+    const auto initial_guess = last_pose_;
 
     // Run ICP
     const auto new_pose = registration_.AlignPointsToMap(source,         // frame

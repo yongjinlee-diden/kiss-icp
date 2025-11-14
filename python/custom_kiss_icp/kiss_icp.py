@@ -54,8 +54,8 @@ class KissICP:
         # Get adaptive_threshold
         sigma = self.adaptive_threshold.get_threshold()
 
-        # Compute initial_guess for ICP
-        initial_guess = self.last_pose @ self.last_delta
+        # Compute initial_guess for ICP (use previous pose directly without constant velocity model)
+        initial_guess = self.last_pose
 
         # Run ICP
         new_pose = self.registration.align_points_to_map(
