@@ -75,10 +75,65 @@ std::tuple<PointWithNormal, double> VoxelHashMap::GetClosestNeighbor(
 std::vector<PointWithNormal> VoxelHashMap::Pointcloud() const {
     std::vector<PointWithNormal> points;
     points.reserve(map_.size() * static_cast<size_t>(max_points_per_voxel_));
+
+    const unsigned int min_points_threshold = static_cast<unsigned int>(
+        std::ceil(max_points_per_voxel_ * min_points_ratio_));
+
     std::for_each(map_.cbegin(), map_.cend(), [&](const auto &map_element) {
         const auto &voxel_points = map_element.second;
+
+        // Apply noise filtering if enabled
+        if (enable_noise_filter_) {
+            // Condition 1: Check minimum points count
+            if (voxel_points.size() < min_points_threshold) {
+                return;  // Skip sparse voxels (likely noise)
+            }
+
+            // Condition 2: Check average confidence
+            double confidence_sum = 0.0;
+            for (const auto &point : voxel_points) {
+                confidence_sum += point(7);  // confidence is at index 7
+            }
+            double avg_confidence = confidence_sum / static_cast<double>(voxel_points.size());
+
+            if (avg_confidence < min_avg_confidence_) {
+                return;  // Skip low confidence voxels (likely noise)
+            }
+
+            // Condition 3: Check normal consistency (if normals are used)
+            if (use_normals_ && voxel_points.size() > 1) {
+                // Compute average normal consistency within voxel
+                double consistency_sum = 0.0;
+                int pair_count = 0;
+
+                for (size_t i = 0; i < voxel_points.size(); ++i) {
+                    for (size_t j = i + 1; j < voxel_points.size(); ++j) {
+                        // Extract normals (indices 4, 5, 6)
+                        Eigen::Vector3d n1 = voxel_points[i].template segment<3>(4);
+                        Eigen::Vector3d n2 = voxel_points[j].template segment<3>(4);
+
+                        // Compute dot product (cosine similarity)
+                        consistency_sum += std::abs(n1.dot(n2));  // Use absolute value
+                        pair_count++;
+                    }
+                }
+
+                // Average consistency
+                if (pair_count > 0) {
+                    double avg_consistency = consistency_sum / static_cast<double>(pair_count);
+
+                    // Filter out voxels with inconsistent normals (likely noise/edges)
+                    if (avg_consistency < min_normal_consistency_) {
+                        return;  // Skip inconsistent voxels
+                    }
+                }
+            }
+        }
+
+        // Passed all filters → add all points from this voxel
         points.insert(points.end(), voxel_points.cbegin(), voxel_points.cend());
     });
+
     points.shrink_to_fit();
     return points;
 }

@@ -43,11 +43,19 @@ using PointWithNormal = Eigen::Matrix<double, 8, 1>;
 
 struct VoxelHashMap {
     explicit VoxelHashMap(double voxel_size, double max_distance, unsigned int max_points_per_voxel,
-                         bool use_normals = false)
+                         bool use_normals = false,
+                         bool enable_noise_filter = false,
+                         double min_points_ratio = 0.7,
+                         double min_normal_consistency = 0.9,
+                         double min_avg_confidence = 0.9)
         : voxel_size_(voxel_size),
           max_distance_(max_distance),
           max_points_per_voxel_(max_points_per_voxel),
-          use_normals_(use_normals) {}
+          use_normals_(use_normals),
+          enable_noise_filter_(enable_noise_filter),
+          min_points_ratio_(min_points_ratio),
+          min_normal_consistency_(min_normal_consistency),
+          min_avg_confidence_(min_avg_confidence) {}
 
     inline void Clear() { map_.clear(); }
     inline bool Empty() const { return map_.empty(); }
@@ -64,6 +72,12 @@ struct VoxelHashMap {
     double max_distance_;
     unsigned int max_points_per_voxel_;
     bool use_normals_;
+
+    // Voxel-based noise filtering parameters
+    bool enable_noise_filter_;
+    double min_points_ratio_;
+    double min_normal_consistency_;
+    double min_avg_confidence_;
 
     // Single unified storage (always PointWithNormal)
     tsl::robin_map<Voxel, std::vector<PointWithNormal>> map_;

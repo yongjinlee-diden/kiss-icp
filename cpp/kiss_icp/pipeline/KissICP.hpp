@@ -58,6 +58,12 @@ struct KISSConfig {
 
     // Confidence-based point quality control
     bool use_confidence_weighting = true;  // Enable confidence-based weighting in ICP
+
+    // Voxel-based noise filtering parameters (for LocalMap output)
+    bool enable_voxel_noise_filter = false;
+    double min_points_ratio = 0.5;
+    double min_normal_consistency = 0.8;
+    double min_avg_confidence = 0.9;
 };
 
 class KissICP {
@@ -74,7 +80,9 @@ public:
           registration_(
               config.max_num_iterations, config.convergence_criterion, config.max_num_threads,
               config.use_normals, config.normal_consistency_threshold, config.use_confidence_weighting),
-          local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel, config.use_normals),
+          local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel, config.use_normals,
+                     config.enable_voxel_noise_filter, config.min_points_ratio,
+                     config.min_normal_consistency, config.min_avg_confidence),
           adaptive_threshold_(config.initial_threshold, config.min_motion_th, config.max_range) {}
 
 public:
