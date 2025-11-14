@@ -72,8 +72,8 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
     // Map representation
     py::class_<VoxelHashMap> internal_map(m, "_VoxelHashMap", "Don't use this");
     internal_map
-        .def(py::init<double, double, int, bool>(), "voxel_size"_a, "max_distance"_a,
-             "max_points_per_voxel"_a, "use_normals"_a = false)
+        .def(py::init<double, double, int>(), "voxel_size"_a, "max_distance"_a,
+             "max_points_per_voxel"_a)
         .def("_clear", &VoxelHashMap::Clear)
         .def("_empty", &VoxelHashMap::Empty)
         // Accept PointWithNormal directly
