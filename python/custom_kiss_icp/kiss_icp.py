@@ -41,7 +41,7 @@ class KissICP:
         self.local_map = get_voxel_hash_map(self.config)
 
     def register_frame(self, frame):
-        if frame.shape[1] >= 7:
+        if frame.shape[1] >= 6:
             # Input has normals: skip preprocessing and voxelize
             source = frame_downsample = frame
         else:

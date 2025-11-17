@@ -65,7 +65,7 @@ class Registration:
         max_correspondance_distance: float,
         kernel: float,
     ) -> np.ndarray:
-        if points.shape[1] >= 7:
+        if points.shape[1] >= 6:
             return self._registration._align_points_to_map(
                 points=kiss_icp_pybind._PointWithNormalVector(points),
                 voxel_map=voxel_map._internal_map,

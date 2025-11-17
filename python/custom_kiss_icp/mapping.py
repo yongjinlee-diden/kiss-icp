@@ -59,7 +59,7 @@ class VoxelHashMap:
 
         TODO(NACHO): Use similar overload API as we did for VDBFusion
         """
-        if points.shape[1] >= 7:
+        if points.shape[1] >= 6:
             self._internal_map._update(kiss_icp_pybind._PointWithNormalVector(points), pose)
         else:
             self._internal_map._update(kiss_icp_pybind._Vector4dVector(points), pose)
