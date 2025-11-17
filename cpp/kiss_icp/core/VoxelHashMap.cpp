@@ -103,8 +103,8 @@ void VoxelHashMap::Update(const std::vector<PointWithNormal> &points, const Soph
                        transformed(3) = point(3);
                        // Transform normal (nx, ny, nz) - rotation only
                        transformed.template segment<3>(4) = R * point.template segment<3>(4);
-                       // Preserve confidence
-                       transformed(7) = point(7);  // confidence
+                       // Preserve consistency
+                       transformed(7) = point(7);  // consistency
                        return transformed;
                    });
 
@@ -122,19 +122,19 @@ void VoxelHashMap::AddPoints(const std::vector<PointWithNormal> &points) {
         auto search = map_.find(voxel);
         if (search != map_.end()) {
             auto &voxel_points = search.value();
-            double new_confidence = point(7);  // Extract confidence from new point
+            double new_consistency = point(7);  // Extract consistency from new point
 
             if (voxel_points.size() >= max_points_per_voxel_) {
-                // Confidence-based quality control: replace lowest confidence point
-                auto min_confidence_it = std::min_element(
+                // Consistency-based quality control: replace lowest consistency point
+                auto min_consistency_it = std::min_element(
                     voxel_points.begin(), voxel_points.end(),
                     [](const auto &a, const auto &b) {
-                        return a(7) < b(7);  // Compare confidence values
+                        return a(7) < b(7);  // Compare consistency values
                     });
 
-                // Only replace if new point has higher confidence
-                if (new_confidence > (*min_confidence_it)(7)) {
-                    *min_confidence_it = point;
+                // Only replace if new point has higher consistency
+                if (new_consistency > (*min_consistency_it)(7)) {
+                    *min_consistency_it = point;
                 }
             } else {
                 voxel_points.emplace_back(point);

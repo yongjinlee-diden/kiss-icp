@@ -48,8 +48,8 @@ using Vector6d = Eigen::Matrix<double, 6, 1>;
 
 // Point-to-point correspondences
 using Correspondences = tbb::concurrent_vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>;
-// Point-to-plane correspondences: (source_point, target_point, target_normal, combined_confidence)
-// Combined confidence = source_confidence * target_confidence (both points must be high quality)
+// Point-to-plane correspondences: (source_point, target_point, target_normal, combined_consistency)
+// Combined consistency = source_consistency * target_consistency (both points must be high quality)
 using CorrespondenceWithNormal = std::tuple<Eigen::Vector3d, Eigen::Vector3d, Eigen::Vector3d, double>;
 using CorrespondencesWithNormals = tbb::concurrent_vector<CorrespondenceWithNormal>;
 using LinearSystem = std::pair<Eigen::Matrix6d, Eigen::Vector6d>;
@@ -70,8 +70,8 @@ void TransformPoints(const Sophus::SE3d &T, std::vector<kiss_icp::PointWithNorma
                        transformed(3) = point(3);
                        // Transform normal (nx, ny, nz) - rotation only
                        transformed.template segment<3>(4) = R * point.template segment<3>(4);
-                       // Preserve confidence
-                       transformed(7) = point(7);  // confidence
+                       // Preserve consistency
+                       transformed(7) = point(7);  // consistency
                        return transformed;
                    });
 }
@@ -128,12 +128,12 @@ CorrespondencesWithNormals DataAssociationWithNormals(
                         Eigen::Vector3d point_3d = point.template head<3>();
                         Eigen::Vector3d neighbor_3d = closest_neighbor.template head<3>();
 
-                        // Compute combined confidence (both source and target quality matter)
-                        double source_confidence = point(7);
-                        double target_confidence = closest_neighbor(7);
-                        double combined_confidence = source_confidence * target_confidence;
+                        // Compute combined consistency (both source and target quality matter)
+                        double source_consistency = point(7);
+                        double target_consistency = closest_neighbor(7);
+                        double combined_consistency = source_consistency * target_consistency;
 
-                        correspondences.emplace_back(point_3d, neighbor_3d, target_normal, combined_confidence);
+                        correspondences.emplace_back(point_3d, neighbor_3d, target_normal, combined_consistency);
                     }
                 }
             });
@@ -185,11 +185,11 @@ LinearSystem BuildLinearSystem(const Correspondences &correspondences, const dou
 // Build linear system for point-to-plane ICP (nv_liom approach)
 LinearSystem BuildLinearSystemPointToPlane(const CorrespondencesWithNormals &correspondences,
                                           const double kernel_scale,
-                                          const bool use_confidence_weighting) {
+                                          const bool use_consistency_weighting) {
     // Point-to-plane residual: r = n · (p_source - p_target)
     // where n is the target normal vector
     auto compute_jacobian_and_residual = [](const auto &correspondence) {
-        const auto &[source, target, normal, confidence] = correspondence;
+        const auto &[source, target, normal, consistency] = correspondence;
 
         // Point-to-plane residual
         const double residual = normal.dot(source - target);
@@ -202,7 +202,7 @@ LinearSystem BuildLinearSystemPointToPlane(const CorrespondencesWithNormals &cor
         J_r.block<1, 3>(0, 0) = normal.transpose();  // Translation part
         J_r.block<1, 3>(0, 3) = (normal.transpose() * (-Sophus::SO3d::hat(source)));  // Rotation part
 
-        return std::make_tuple(J_r, residual, confidence);
+        return std::make_tuple(J_r, residual, consistency);
     };
 
     auto sum_linear_systems = [](LinearSystem a, const LinearSystem &b) {
@@ -223,12 +223,12 @@ LinearSystem BuildLinearSystemPointToPlane(const CorrespondencesWithNormals &cor
         [&](const tbb::blocked_range<correspondence_iterator> &r, LinearSystem J) -> LinearSystem {
             return std::transform_reduce(
                 r.begin(), r.end(), J, sum_linear_systems, [&](const auto &correspondence) {
-                    const auto &[J_r, residual, confidence] = compute_jacobian_and_residual(correspondence);
+                    const auto &[J_r, residual, consistency] = compute_jacobian_and_residual(correspondence);
 
-                    // Combined weighting: GM_weight * confidence_weight
+                    // Combined weighting: GM_weight * consistency_weight
                     const double gm_w = GM_weight(residual * residual);
-                    const double confidence_w = use_confidence_weighting ? confidence : 1.0;
-                    const double w = gm_w * confidence_w;
+                    const double consistency_w = use_consistency_weighting ? consistency : 1.0;
+                    const double w = gm_w * consistency_w;
 
                     return LinearSystem(J_r.transpose() * w * J_r,        // JTJ
                                       J_r.transpose() * w * residual);  // JTr
@@ -245,7 +245,7 @@ namespace kiss_icp {
 
 Registration::Registration(int max_num_iteration, double convergence_criterion, int max_num_threads,
                           bool use_normals, double normal_consistency_threshold,
-                          bool use_confidence_weighting)
+                          bool use_consistency_weighting)
     : max_num_iterations_(max_num_iteration),
       convergence_criterion_(convergence_criterion),
       // Only manipulate the number of threads if the user specifies something greater than 0
@@ -253,7 +253,7 @@ Registration::Registration(int max_num_iteration, double convergence_criterion, 
                                            : tbb::this_task_arena::max_concurrency()),
       use_normals_(use_normals),
       normal_consistency_threshold_(normal_consistency_threshold),
-      use_confidence_weighting_(use_confidence_weighting) {
+      use_consistency_weighting_(use_consistency_weighting) {
     // This global variable requires static duration storage to be able to manipulate the max
     // concurrency from TBB across the entire class
     static const auto tbb_control_settings = tbb::global_control(
@@ -278,7 +278,7 @@ Sophus::SE3d Registration::AlignPointsToMap(const std::vector<PointWithNormal> &
             // Point-to-plane ICP with normal consistency check (nv_liom approach)
             const auto correspondences = DataAssociationWithNormals(
                 source, voxel_map, max_distance, normal_consistency_threshold_);
-            const auto &[JTJ, JTr] = BuildLinearSystemPointToPlane(correspondences, kernel_scale, use_confidence_weighting_);
+            const auto &[JTJ, JTr] = BuildLinearSystemPointToPlane(correspondences, kernel_scale, use_consistency_weighting_);
             const Eigen::Vector6d dx = JTJ.ldlt().solve(-JTr);
             const Sophus::SE3d estimation = Sophus::SE3d::exp(dx);
             TransformPoints(estimation, source);

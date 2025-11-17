@@ -37,7 +37,7 @@
 namespace kiss_icp {
 
 // Structure to hold point with normal vector and quality metrics:
-// (x, y, z, t, nx, ny, nz, confidence)
+// (x, y, z, t, nx, ny, nz, consistency)
 // Using Eigen::Matrix<double, 8, 1> for better memory alignment
 using PointWithNormal = Eigen::Matrix<double, 8, 1>;
 

@@ -56,8 +56,8 @@ struct KISSConfig {
     bool use_normals = false;
     double normal_consistency_threshold = 0.9848;  // cos(10°)
 
-    // Confidence-based point quality control
-    bool use_confidence_weighting = true;  // Enable confidence-based weighting in ICP
+    // Consistency-based point quality control
+    bool use_consistency_weighting = true;  // Enable consistency-based weighting in ICP
 };
 
 class KissICP {
@@ -73,7 +73,7 @@ public:
           preprocessor_(config.max_range, config.min_range, config.deskew, config.max_num_threads),
           registration_(
               config.max_num_iterations, config.convergence_criterion, config.max_num_threads,
-              config.use_normals, config.normal_consistency_threshold, config.use_confidence_weighting),
+              config.use_normals, config.normal_consistency_threshold, config.use_consistency_weighting),
           local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel),
           adaptive_threshold_(config.initial_threshold, config.min_motion_th, config.max_range) {}
 
