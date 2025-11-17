@@ -35,11 +35,15 @@ def get_voxel_hash_map(config: KISSConfig):
 
 
 class VoxelHashMap:
-    def __init__(self, voxel_size: float, max_distance: float, max_points_per_voxel: int):
+    def __init__(self, voxel_size: float, max_distance: float, max_points_per_voxel: int,
+                 decay_rate: float = 0.1, depth_tolerance: float = 0.05, confidence_threshold: float = 0.8):
         self._internal_map = kiss_icp_pybind._VoxelHashMap(
             voxel_size=voxel_size,
             max_distance=max_distance,
             max_points_per_voxel=max_points_per_voxel,
+            decay_rate=decay_rate,
+            depth_tolerance=depth_tolerance,
+            confidence_threshold=confidence_threshold,
         )
 
     def clear(self):
@@ -69,6 +73,6 @@ class VoxelHashMap:
     def point_cloud(self) -> np.ndarray:
         """Return the internal representaion as a np.array (pointcloud).
 
-        Returns array with columns [x, y, z, t, nx, ny, nz, (confidence)].
+        Returns array with columns [x, y, z, nx, ny, nz, consistency].
         """
         return np.asarray(self._internal_map._point_cloud())

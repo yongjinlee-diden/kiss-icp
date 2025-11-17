@@ -66,12 +66,10 @@ void TransformPoints(const Sophus::SE3d &T, std::vector<kiss_icp::PointWithNorma
                        kiss_icp::PointWithNormal transformed;
                        // Transform position (x, y, z)
                        transformed.template head<3>() = R * point.template head<3>() + t;
-                       // Preserve time
-                       transformed(3) = point(3);
                        // Transform normal (nx, ny, nz) - rotation only
-                       transformed.template segment<3>(4) = R * point.template segment<3>(4);
+                       transformed.template segment<3>(3) = R * point.template segment<3>(3);
                        // Preserve consistency
-                       transformed(7) = point(7);  // consistency
+                       transformed(6) = point(6);  // consistency
                        return transformed;
                    });
 }
@@ -116,9 +114,9 @@ CorrespondencesWithNormals DataAssociationWithNormals(
                 const auto &[closest_neighbor, distance] = voxel_map.GetClosestNeighbor(point);
 
                 if (distance < max_correspondance_distance) {
-                    // Extract normals (segment<3>(4) = nx, ny, nz)
-                    Eigen::Vector3d source_normal = point.template segment<3>(4);
-                    Eigen::Vector3d target_normal = closest_neighbor.template segment<3>(4);
+                    // Extract normals (segment<3>(3) = nx, ny, nz)
+                    Eigen::Vector3d source_normal = point.template segment<3>(3);
+                    Eigen::Vector3d target_normal = closest_neighbor.template segment<3>(3);
 
                     // Normal consistency check (inspired by nv_liom)
                     // Only accept correspondences where normals are similar (within ~10 degrees)
@@ -129,8 +127,8 @@ CorrespondencesWithNormals DataAssociationWithNormals(
                         Eigen::Vector3d neighbor_3d = closest_neighbor.template head<3>();
 
                         // Compute combined consistency (both source and target quality matter)
-                        double source_consistency = point(7);
-                        double target_consistency = closest_neighbor(7);
+                        double source_consistency = point(6);
+                        double target_consistency = closest_neighbor(6);
                         double combined_consistency = source_consistency * target_consistency;
 
                         correspondences.emplace_back(point_3d, neighbor_3d, target_normal, combined_consistency);

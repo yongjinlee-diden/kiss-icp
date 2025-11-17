@@ -97,9 +97,6 @@ class OdometryPipeline:
     def _run_pipeline(self):
         for idx in get_progress_bar(self._first, self._last):
             raw_frame, timestamps = self._dataset[idx]
-            if len(timestamps) == 0:
-                timestamps = np.zeros_like(raw_frame[:, 0])
-            raw_frame = np.concatenate((raw_frame, timestamps[:, None]), axis=1)
             start_time = time.perf_counter_ns()
             source, keypoints = self.odometry.register_frame(raw_frame)
             self.poses[idx - self._first] = self.odometry.last_pose

@@ -37,9 +37,9 @@
 namespace kiss_icp {
 
 // Structure to hold point with normal vector and quality metrics:
-// (x, y, z, t, nx, ny, nz, consistency)
-// Using Eigen::Matrix<double, 8, 1> for better memory alignment
-using PointWithNormal = Eigen::Matrix<double, 8, 1>;
+// (x, y, z, nx, ny, nz, consistency)
+// Using Eigen::Matrix<double, 7, 1> for better memory alignment
+using PointWithNormal = Eigen::Matrix<double, 7, 1>;
 
 struct VoxelHashMap {
     explicit VoxelHashMap(double voxel_size, double max_distance, unsigned int max_points_per_voxel,

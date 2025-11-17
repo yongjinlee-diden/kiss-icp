@@ -47,14 +47,15 @@ PYBIND11_MAKE_OPAQUE(std::vector<kiss_icp::PointWithNormal>);
 
 namespace kiss_icp {
 
-// Helper function to convert Vector4d to PointWithNormal (with zero normals)
+// Helper function to convert Vector4d to PointWithNormal (with zero normals and default consistency)
 inline std::vector<PointWithNormal> ConvertToPointWithNormal(const std::vector<Eigen::Vector4d>& points) {
     std::vector<PointWithNormal> result;
     result.reserve(points.size());
     for (const auto& p : points) {
         PointWithNormal pwn = PointWithNormal::Zero();
-        pwn.head<4>() = p;  // x, y, z, t
-        // normals (indices 4, 5, 6) remain zero
+        pwn.head<3>() = p.head<3>();  // x, y, z
+        // normals (indices 3, 4, 5) remain zero
+        pwn(6) = 1.0;  // consistency defaults to 1.0
         result.push_back(pwn);
     }
     return result;
@@ -72,8 +73,9 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
     // Map representation
     py::class_<VoxelHashMap> internal_map(m, "_VoxelHashMap", "Don't use this");
     internal_map
-        .def(py::init<double, double, int>(), "voxel_size"_a, "max_distance"_a,
-             "max_points_per_voxel"_a)
+        .def(py::init<double, double, int, double, double, double>(),
+             "voxel_size"_a, "max_distance"_a, "max_points_per_voxel"_a,
+             "decay_rate"_a = 0.1, "depth_tolerance"_a = 0.05, "confidence_threshold"_a = 0.8)
         .def("_clear", &VoxelHashMap::Clear)
         .def("_empty", &VoxelHashMap::Empty)
         // Accept PointWithNormal directly
