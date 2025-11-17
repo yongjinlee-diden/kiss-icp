@@ -58,12 +58,16 @@ struct KISSConfig {
 
     // Consistency-based point quality control
     bool use_consistency_weighting = true;  // Enable consistency-based weighting in ICP
+
+    // Dynamic object removal via confidence-based ray casting
+    bool dynamic_removal_enabled = false;
+    double confidence_threshold = 0.8;
+    double confidence_decay_rate = 0.1;
+    double depth_tolerance_m = 0.05;
 };
 
 class KissICP {
 public:
-    using Vector4dVector = std::vector<Eigen::Vector4d>;
-    using Vector4dVectorTuple = std::tuple<Vector4dVector, Vector4dVector>;
     using PointWithNormalVector = std::vector<PointWithNormal>;
     using PointWithNormalVectorTuple = std::tuple<PointWithNormalVector, PointWithNormalVector>;
 
@@ -74,7 +78,9 @@ public:
           registration_(
               config.max_num_iterations, config.convergence_criterion, config.max_num_threads,
               config.use_normals, config.normal_consistency_threshold, config.use_consistency_weighting),
-          local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel),
+          local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel,
+                     config.confidence_decay_rate, config.depth_tolerance_m,
+                     config.confidence_threshold),
           adaptive_threshold_(config.initial_threshold, config.min_motion_th, config.max_range) {}
 
 public:
@@ -83,21 +89,26 @@ public:
     PointWithNormalVectorTuple Voxelize(const std::vector<PointWithNormal> &frame) const;
     std::vector<PointWithNormal> LocalMap() const { return local_map_.Pointcloud(); };
 
-    const VoxelHashMap &VoxelMap() const { return local_map_; };
-    VoxelHashMap &VoxelMap() { return local_map_; };
-
     const Sophus::SE3d &pose() const { return last_pose_; }
     Sophus::SE3d &pose() { return last_pose_; }
 
-    const Sophus::SE3d &delta() const { return last_delta_; }
-    Sophus::SE3d &delta() { return last_delta_; }
     void Reset();
 
-    bool use_normals() const { return config_.use_normals; }
+    // Dynamic object removal support
+    void SetCameraParams(const std::vector<VoxelHashMap::CameraParams> &params) {
+        camera_params_ = params;
+    }
+    void SetDepthMaps(const std::vector<std::vector<float>> &depth_maps) {
+        depth_maps_ = depth_maps;
+    }
+
+    // Set current time for voxel tracking (call before RegisterFrame)
+    void SetCurrentTime(double time) {
+        local_map_.SetCurrentTime(time);
+    }
 
 private:
     Sophus::SE3d last_pose_;
-    Sophus::SE3d last_delta_;
 
     // KISS-ICP pipeline modules
     KISSConfig config_;
@@ -105,6 +116,10 @@ private:
     Registration registration_;
     VoxelHashMap local_map_;
     AdaptiveThreshold adaptive_threshold_;
+
+    // Dynamic object removal
+    std::vector<VoxelHashMap::CameraParams> camera_params_;
+    std::vector<std::vector<float>> depth_maps_;
 };
 
 }  // namespace kiss_icp::pipeline

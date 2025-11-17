@@ -42,13 +42,25 @@ namespace kiss_icp {
 using PointWithNormal = Eigen::Matrix<double, 8, 1>;
 
 struct VoxelHashMap {
-    explicit VoxelHashMap(double voxel_size, double max_distance, unsigned int max_points_per_voxel)
+    explicit VoxelHashMap(double voxel_size, double max_distance, unsigned int max_points_per_voxel,
+                         double decay_rate, double depth_tolerance, double confidence_threshold)
         : voxel_size_(voxel_size),
           max_distance_(max_distance),
-          max_points_per_voxel_(max_points_per_voxel) {}
+          max_points_per_voxel_(max_points_per_voxel),
+          decay_rate_(decay_rate),
+          depth_tolerance_(depth_tolerance),
+          confidence_threshold_(confidence_threshold) {}
 
-    inline void Clear() { map_.clear(); }
+    inline void Clear() {
+        map_.clear();
+        voxel_confidence_.clear();
+        voxel_last_update_time_.clear();
+        voxel_fov_entry_time_.clear();
+    }
     inline bool Empty() const { return map_.empty(); }
+
+    // Set current update time (called before Update to track when voxels are added)
+    inline void SetCurrentTime(double time) { current_update_time_ = time; }
 
     // Unified API - always uses PointWithNormal internally
     void Update(const std::vector<PointWithNormal> &points, const Eigen::Vector3d &origin);
@@ -58,11 +70,43 @@ struct VoxelHashMap {
     std::vector<PointWithNormal> Pointcloud() const;
     std::tuple<PointWithNormal, double> GetClosestNeighbor(const PointWithNormal &query) const;
 
+    // Dynamic object removal via confidence-based ray casting
+    // Camera parameters for projection
+    struct CameraParams {
+        int width, height;
+        Eigen::Matrix4d robot2img_transform;  // Transform from robot frame to image plane
+    };
+
+    // Update voxel confidence based on depth observations
+    // robot_pose: current robot pose (SE3 transformation from global to robot frame)
+    // camera_params: camera intrinsics and extrinsics
+    // depth_maps: depth images from all cameras (row-major, width x height per camera)
+    // Uses stored config parameters (decay_rate_, boost_rate_, etc.)
+    void UpdateVoxelConfidence(
+        const Sophus::SE3d &robot_pose,
+        const std::vector<CameraParams> &camera_params,
+        const std::vector<std::vector<float>> &depth_maps);
+
     double voxel_size_;
     double max_distance_;
     unsigned int max_points_per_voxel_;
 
+    // Dynamic removal config parameters
+    double decay_rate_;
+    double depth_tolerance_;
+    double confidence_threshold_;
+
     // Single unified storage (always PointWithNormal)
     tsl::robin_map<Voxel, std::vector<PointWithNormal>> map_;
+
+    // Per-voxel confidence for dynamic object removal
+    tsl::robin_map<Voxel, double> voxel_confidence_;
+
+    // Per-voxel timestamp tracking
+    tsl::robin_map<Voxel, double> voxel_last_update_time_;  // Last time voxel was updated (added/modified)
+    tsl::robin_map<Voxel, double> voxel_fov_entry_time_;    // Time when voxel first entered camera FOV
+
+    // Current update timestamp (set before AddPoints to track update batches)
+    double current_update_time_ = 0.0;
 };
 }  // namespace kiss_icp

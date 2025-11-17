@@ -145,6 +145,9 @@ void VoxelHashMap::AddPoints(const std::vector<PointWithNormal> &points) {
             voxel_points.emplace_back(point);
             map_.insert({voxel, std::move(voxel_points)});
         }
+        voxel_confidence_[voxel] = 1.0;  // Initialize with full confidence
+        voxel_last_update_time_[voxel] = current_update_time_;
+        voxel_fov_entry_time_[voxel] = current_update_time_;
     });
 }
 
@@ -156,9 +159,109 @@ void VoxelHashMap::RemovePointsFarFromLocation(const Eigen::Vector3d &origin) {
         const auto &pt = voxel_points.front();
         if ((pt.template head<3>() - origin).squaredNorm() >= (max_distance2)) {
             it = map_.erase(it);
+            // Also remove from confidence map and timestamp maps
+            voxel_confidence_.erase(voxel);
+            voxel_last_update_time_.erase(voxel);
+            voxel_fov_entry_time_.erase(voxel);
         } else {
             ++it;
         }
+    }
+}
+
+void VoxelHashMap::UpdateVoxelConfidence(
+    const Sophus::SE3d &robot_pose,
+    const std::vector<CameraParams> &camera_params,
+    const std::vector<std::vector<float>> &depth_maps) {
+
+    if (camera_params.size() != depth_maps.size() || camera_params.empty()) return;
+
+    // Transform from global frame to robot frame
+    Sophus::SE3d global2robot = robot_pose.inverse();
+
+    // Iterate through all voxels in the map
+    for (auto it = map_.begin(); it != map_.end();) {
+        const auto &[voxel, voxel_points] = *it;
+
+        // Skip voxels that were updated in the current step
+        if (voxel_last_update_time_[voxel] >= current_update_time_) {
+            ++it;
+            continue;
+        }
+
+        // Use first point in voxel as representative
+        const auto &pt = voxel_points.front();
+        Eigen::Vector3d pt_global = pt.template head<3>();
+
+        // Transform point from global to robot frame
+        Eigen::Vector3d pt_robot = global2robot * pt_global;
+
+        // Check visibility and occlusion against all cameras
+        bool was_observed = false;
+        bool is_occluded = false;
+
+        for (size_t cam_idx = 0; cam_idx < camera_params.size(); ++cam_idx) {
+            const auto &cam = camera_params[cam_idx];
+            const auto &depth_map = depth_maps[cam_idx];
+
+            if (depth_map.size() != static_cast<size_t>(cam.width * cam.height)) {
+                continue;  // Skip invalid depth map
+            }
+
+            // Project point from robot frame to image plane
+            Eigen::Vector4d pt_robot_h(pt_robot.x(), pt_robot.y(), pt_robot.z(), 1.0);
+            Eigen::Vector4d pt_img_h = cam.robot2img_transform * pt_robot_h;
+
+            // Check if point is behind camera
+            if (pt_img_h(2) <= 0.01) continue;
+
+            // Perspective division to get pixel coordinates
+            double u_f = pt_img_h(0) / pt_img_h(2);
+            double v_f = pt_img_h(1) / pt_img_h(2);
+            int u = static_cast<int>(std::round(u_f));
+            int v = static_cast<int>(std::round(v_f));
+
+            // Check if pixel is within image bounds
+            if (u < 0 || u >= cam.width || v < 0 || v >= cam.height) continue;
+            voxel_fov_entry_time_[voxel] = current_update_time_;
+
+            // Get depth from depth map
+            int pixel_idx = v * cam.width + u;
+            float observed_depth = depth_map[pixel_idx];
+
+            // Skip invalid depth
+            if (observed_depth <= 0.0f) continue;
+
+            was_observed = true;
+
+            // Get voxel depth (distance along camera z-axis)
+            double voxel_depth = pt_img_h(2);
+
+            // Check if voxel is occluded (behind observed surface)
+            if (voxel_depth < (observed_depth - depth_tolerance_)) {
+                is_occluded = true;
+                break;  // No need to check other cameras
+            }
+        }
+
+        // Update confidence based on observation
+        if (was_observed) {
+            if (is_occluded) {
+                // Voxel is occluded (likely dynamic object) - decrease confidence
+                voxel_confidence_[voxel] -= decay_rate_;
+            }
+
+            // Remove voxel if confidence is too low
+            if (voxel_confidence_[voxel] < confidence_threshold_) {
+                it = map_.erase(it);
+                voxel_confidence_.erase(voxel);
+                voxel_last_update_time_.erase(voxel);
+                voxel_fov_entry_time_.erase(voxel);
+                continue;
+            }
+        }
+
+        ++it;
     }
 }
 

@@ -55,11 +55,15 @@ KissICP::PointWithNormalVectorTuple KissICP::RegisterFrame(const std::vector<Poi
     // Compute the difference between the prediction and the actual estimate
     const auto model_deviation = initial_guess.inverse() * new_pose;
 
-    // Update step: threshold, local map, delta, and the last pose
+    // Update step: threshold, local map, and the last pose
     adaptive_threshold_.UpdateModelDeviation(model_deviation);
     local_map_.Update(frame_downsample, new_pose);
-    last_delta_ = last_pose_.inverse() * new_pose;
     last_pose_ = new_pose;
+
+    // Dynamic object removal: Update voxel confidence based on depth maps
+    if (config_.dynamic_removal_enabled && !depth_maps_.empty() && !camera_params_.empty()) {
+        local_map_.UpdateVoxelConfidence(last_pose_, camera_params_, depth_maps_);
+    }
 
     return {preprocessed_frame, source};
 }
@@ -74,7 +78,6 @@ KissICP::PointWithNormalVectorTuple KissICP::Voxelize(const std::vector<PointWit
 
 void KissICP::Reset() {
     last_pose_ = Sophus::SE3d();
-    last_delta_ = Sophus::SE3d();
 
     // Clear the local map
     local_map_.Clear();
