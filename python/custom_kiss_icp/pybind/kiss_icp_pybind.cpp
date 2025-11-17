@@ -42,18 +42,18 @@
 namespace py = pybind11;
 using namespace py::literals;
 
-PYBIND11_MAKE_OPAQUE(std::vector<Eigen::Vector4d>);
+PYBIND11_MAKE_OPAQUE(std::vector<Eigen::Vector3d>);
 PYBIND11_MAKE_OPAQUE(std::vector<kiss_icp::PointWithNormal>);
 
 namespace kiss_icp {
 
-// Helper function to convert Vector4d to PointWithNormal (with zero normals and default consistency)
-inline std::vector<PointWithNormal> ConvertToPointWithNormal(const std::vector<Eigen::Vector4d>& points) {
+// Helper function to convert Vector3d to PointWithNormal (with zero normals and default consistency)
+inline std::vector<PointWithNormal> ConvertToPointWithNormal(const std::vector<Eigen::Vector3d>& points) {
     std::vector<PointWithNormal> result;
     result.reserve(points.size());
     for (const auto& p : points) {
         PointWithNormal pwn = PointWithNormal::Zero();
-        pwn.head<3>() = p.head<3>();  // x, y, z
+        pwn.head<3>() = p;  // x, y, z
         // normals (indices 3, 4, 5) remain zero
         pwn(6) = 1.0;  // consistency defaults to 1.0
         result.push_back(pwn);
@@ -62,9 +62,9 @@ inline std::vector<PointWithNormal> ConvertToPointWithNormal(const std::vector<E
 }
 
 PYBIND11_MODULE(kiss_icp_pybind, m) {
-    auto vector4dvector = pybind_eigen_vector_of_vector<Eigen::Vector4d>(
-        m, "_Vector4dVector", "std::vector<Eigen::Vector4d>",
-        py::py_array_to_vectors_double<Eigen::Vector4d>);
+    auto vector3dvector = pybind_eigen_vector_of_vector<Eigen::Vector3d>(
+        m, "_Vector3dVector", "std::vector<Eigen::Vector3d>",
+        py::py_array_to_vectors_double<Eigen::Vector3d>);
 
     auto pointwithnormalvector = pybind_eigen_vector_of_vector<PointWithNormal>(
         m, "_PointWithNormalVector", "std::vector<PointWithNormal>",
@@ -91,17 +91,17 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
                 self.Update(points, pose);
             },
             "points"_a, "pose"_a)
-        // Accept Vector4d and auto-convert
+        // Accept Vector3d and auto-convert
         .def(
             "_update",
-            [](VoxelHashMap &self, const std::vector<Eigen::Vector4d> &points,
+            [](VoxelHashMap &self, const std::vector<Eigen::Vector3d> &points,
                const Eigen::Matrix4d &T) {
                 Sophus::SE3d pose(T);
                 self.Update(ConvertToPointWithNormal(points), pose);
             },
             "points"_a, "pose"_a)
         .def("_add_points",
-            [](VoxelHashMap &self, const std::vector<Eigen::Vector4d> &points) {
+            [](VoxelHashMap &self, const std::vector<Eigen::Vector3d> &points) {
                 self.AddPoints(ConvertToPointWithNormal(points));
             },
             "points"_a)
@@ -114,7 +114,7 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
              "max_num_threads"_a)
         .def(
             "_preprocess",
-            [](Preprocessor &self, const std::vector<Eigen::Vector4d> &points,
+            [](Preprocessor &self, const std::vector<Eigen::Vector3d> &points,
                const Eigen::Matrix4d &relative_motion) {
                 Sophus::SE3d motion(relative_motion);
                 return self.Preprocess(points, motion);
@@ -141,10 +141,10 @@ PYBIND11_MODULE(kiss_icp_pybind, m) {
             },
             "points"_a, "voxel_map"_a, "initial_guess"_a, "max_correspondance_distance"_a,
             "kernel"_a)
-        // Accept Vector4d and auto-convert
+        // Accept Vector3d and auto-convert
         .def(
             "_align_points_to_map",
-            [](Registration &self, const std::vector<Eigen::Vector4d> &points,
+            [](Registration &self, const std::vector<Eigen::Vector3d> &points,
                const VoxelHashMap &voxel_map, const Eigen::Matrix4d &T_guess,
                double max_correspondence_distance, double kernel) {
                 Sophus::SE3d initial_guess(T_guess);

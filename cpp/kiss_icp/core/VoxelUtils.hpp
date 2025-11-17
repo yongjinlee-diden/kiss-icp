@@ -37,7 +37,7 @@ inline Voxel PointToVoxel(const Eigen::Vector3d &point, const double voxel_size)
 }
 
 /// Voxelize a point cloud keeping the original coordinates
-std::vector<Eigen::Vector4d> VoxelDownsample(const std::vector<Eigen::Vector4d> &frame,
+std::vector<Eigen::Vector3d> VoxelDownsample(const std::vector<Eigen::Vector3d> &frame,
                                              const double voxel_size);
 
 }  // namespace kiss_icp

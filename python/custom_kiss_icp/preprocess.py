@@ -47,7 +47,7 @@ class Preprocessor:
 
         return np.asarray(
             self._preprocessor._preprocess(
-                kiss_icp_pybind._Vector4dVector(frame),
+                kiss_icp_pybind._Vector3dVector(frame),
                 relative_motion,
             )
         )

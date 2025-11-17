@@ -62,10 +62,10 @@ class VoxelHashMap:
         if points.shape[1] >= 6:
             self._internal_map._update(kiss_icp_pybind._PointWithNormalVector(points), pose)
         else:
-            self._internal_map._update(kiss_icp_pybind._Vector4dVector(points), pose)
+            self._internal_map._update(kiss_icp_pybind._Vector3dVector(points), pose)
 
     def add_points(self, points):
-        self._internal_map._add_points(kiss_icp_pybind._Vector4dVector(points))
+        self._internal_map._add_points(kiss_icp_pybind._Vector3dVector(points))
 
     def remove_far_away_points(self, origin):
         self._internal_map._remove_far_away_points(origin)
