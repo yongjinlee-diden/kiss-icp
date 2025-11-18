@@ -35,7 +35,7 @@ struct Preprocessor {
                  const bool deskew,
                  const int max_num_threads);
 
-    std::vector<Eigen::Vector4d> Preprocess(const std::vector<Eigen::Vector4d> &frame,
+    std::vector<Eigen::Vector3d> Preprocess(const std::vector<Eigen::Vector3d> &frame,
                                             const Sophus::SE3d &relative_motion) const;
     double max_range_;
     double min_range_;
