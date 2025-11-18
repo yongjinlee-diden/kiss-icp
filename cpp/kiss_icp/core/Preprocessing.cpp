@@ -54,6 +54,7 @@ Preprocessor::Preprocessor(const double max_range,
 
 std::vector<Eigen::Vector3d> Preprocessor::Preprocess(const std::vector<Eigen::Vector3d> &frame,
                                                       const Sophus::SE3d &relative_motion) const {
+    (void)relative_motion;  // Suppress unused parameter warning
     std::vector<Eigen::Vector3d> preprocessed_frame;
     preprocessed_frame.reserve(frame.size());
     std::for_each(frame.cbegin(), frame.cend(), [&](const auto &point) {
